@@ -16,8 +16,8 @@ MODELS_DIR = BASE_DIR / "models"
 OUTPUTS_DIR = BASE_DIR / "outputs"
 
 # ── Data files ────────────────────────────────────────────────────
-TRAIN_FILE = DATA_RAW / "train.tsv"
-TEST_FILE = DATA_RAW / "test.tsv"
+TRAIN_FILE = DATA_RAW / "train.csv"
+TEST_FILE = DATA_RAW / "test.csv"
 PROCESSED_TRAIN = DATA_PROCESSED / "train_features.parquet"
 PROCESSED_TEST = DATA_PROCESSED / "test_features.parquet"
 
