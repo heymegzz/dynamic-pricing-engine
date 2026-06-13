@@ -106,6 +106,8 @@ def encode_categoricals(df, cat_cols, target_col, fit=True, encoders=None):
     
     return df, encoders
 
+import joblib
+
 def run_pipeline(save=True):
     """
     Orchestrate feature engineering pipeline.
@@ -136,6 +138,11 @@ def run_pipeline(save=True):
         train_df.to_parquet(config.PROCESSED_TRAIN, index=False)
         test_df.to_parquet(config.PROCESSED_TEST, index=False)
         print(f"Saved processed data to {config.DATA_PROCESSED}")
+        
+        config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        joblib.dump(encoders, config.MODELS_DIR / "encoders.pkl")
+        joblib.dump(category_stats, config.MODELS_DIR / "category_stats.pkl")
+        print(f"Saved encoders and category_stats to {config.MODELS_DIR}")
         
     print(f"Final Train shape: {train_df.shape}")
     print(f"Final Test shape: {test_df.shape}")

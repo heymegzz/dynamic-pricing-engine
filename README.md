@@ -1,6 +1,6 @@
 # dynamic-pricing-engine
 
-> Demand-aware price optimization using gradient boosting and price elasticity modeling — trained on 1.4M real product listings.
+> Demand-aware price optimization using gradient boosting and price elasticity modeling — trained on a 148k sample of real product listings.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![LightGBM](https://img.shields.io/badge/Model-LightGBM-green.svg)](https://lightgbm.readthedocs.io)
@@ -101,8 +101,9 @@ Streamlit dashboard
 ## Dataset
 
 **Primary:** [Mercari Price Suggestion Challenge](https://www.kaggle.com/c/mercari-price-suggestion-challenge) (Kaggle)
-- 1.4M product listings with real market prices
+- 148,253 product listings (stratified sample from the 1.4M Mercari dataset)
 - Features: category, brand, condition, item description, shipping
+- *Note: The sample is used for development efficiency; the pipeline scales to 1.4M rows natively.*
 
 **Fallback:** [Online Retail II](https://archive.ics.uci.edu/ml/datasets/Online+Retail+II) (UCI ML Repository)
 - Transaction-level data with time features for temporal demand modeling
@@ -193,7 +194,7 @@ seaborn>=0.12
 
 ## Interview talking points
 
-- Why LightGBM over XGBoost? Faster on categorical features with native `categorical_feature` support; better memory efficiency on 1.4M rows.
+- Why LightGBM over XGBoost? Faster on categorical features with native `categorical_feature` support; better memory efficiency.
 - Why log(price) as target? Price distributions are right-skewed; log-transform stabilizes variance and improves RMSE.
 - How is elasticity estimated without true demand data? Via relative price positioning within category as a demand proxy — acknowledged limitation.
 - What would you add with more time? True A/B testing framework, contextual bandit for online learning, competitor price signals as features.

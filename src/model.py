@@ -12,6 +12,7 @@ import lightgbm as lgb
 from sklearn.dummy import DummyRegressor
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import joblib
 
 # Append project root to path to import config
 sys.path.append(str(Path(__file__).parent.parent))
@@ -162,6 +163,20 @@ def save_metrics(metrics_dict, filepath):
     with open(filepath, 'w') as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"Metrics saved to: {filepath}")
+
+def load_artifacts():
+    """
+    Load the trained model, the target encoders, and category stats.
+    This acts as the single entry point for inference pipelines.
+    NOTE: The TargetEncoders MUST be saved alongside the model because they 
+    contain the empirical means mapped during training. Failing to use the exact 
+    same encoders during inference causes training-serving skew, resulting in garbage predictions.
+    """
+    with open(config.MODEL_FILE, 'rb') as f:
+        model = pickle.load(f)
+    encoders = joblib.load(config.MODELS_DIR / "encoders.pkl")
+    category_stats = joblib.load(config.MODELS_DIR / "category_stats.pkl")
+    return model, encoders, category_stats
 
 def run_training_pipeline():
     """

@@ -186,14 +186,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+from src.model import load_artifacts
+
 @st.cache_resource
 def load_resources():
-    model = load_model(MODEL_FILE)
+    model, encoders, category_stats = load_artifacts()
     train_df = pd.read_parquet(PROCESSED_TRAIN)
-    return model, train_df
+    return model, train_df, encoders, category_stats
 
 try:
-    model, train_df = load_resources()
+    model, train_df, encoders, category_stats = load_resources()
 except Exception as e:
     st.error(f"Failed to load models or data: {e}")
     st.stop()
@@ -247,6 +249,7 @@ item_features = {
 
 for f in ALL_FEATURES:
     if f not in item_features:
+        # Use target encoded global means if features are not specified
         val = float(train_df[f].mean()) if f in train_df.columns else 0.0
         item_features[f] = val
 
@@ -254,7 +257,8 @@ demand_curve = build_demand_curve(
     item_features=item_features,
     model=model,
     category_median=cat_median,
-    category_std=cat_std
+    category_std=cat_std,
+    elasticity_k=1.0
 )
 
 opt_result = find_optimal_price(demand_curve)

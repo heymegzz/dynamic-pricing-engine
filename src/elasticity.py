@@ -25,9 +25,15 @@ def load_model(model_path):
     with open(model_path, 'rb') as f:
         return pickle.load(f)
 
-def build_demand_curve(item_features: dict, model, category_median: float, category_std: float, price_multipliers=None) -> dict:
+def build_demand_curve(item_features: dict, model, category_median: float, category_std: float, price_multipliers=None, elasticity_k: float = 1.0) -> dict:
     """
-    Build a demand curve by sweeping prices and estimating demand.
+    Build a demand curve by sweeping prices and estimating demand based on a model-predicted fair price.
+    
+    Demand proxy logic:
+    The model predicts a 'fair market price' based on the item's features. 
+    We approximate demand by assuming that pricing above this fair price decays demand exponentially,
+    and pricing below it boosts demand exponentially, scaled by the category's volatility (std) 
+    and a tunable elasticity parameter (elasticity_k).
     
     Args:
         item_features (dict): Dictionary with all ALL_FEATURES keys.
@@ -35,6 +41,7 @@ def build_demand_curve(item_features: dict, model, category_median: float, categ
         category_median (float): Median price for the item's category.
         category_std (float): Standard deviation of price for the item's category.
         price_multipliers (np.array, optional): Array of multipliers. Defaults to config constants.
+        elasticity_k (float, optional): Tunable elasticity parameter. Defaults to 1.0.
         
     Returns:
         dict: A dictionary containing lists of "prices", "demands", "revenues", and "multipliers".
@@ -51,21 +58,22 @@ def build_demand_curve(item_features: dict, model, category_median: float, categ
     
     for m in price_multipliers:
         price = base_price * m
-        log_price = np.log1p(price)
         
-        # Create a copy as instructed, to not modify the input dict in-place
+        # Create a copy to not modify the input dict in-place
         item_features_copy = item_features.copy()
-        item_features_copy["log_price_input"] = log_price
+        item_features_copy["price"] = price  # Set current sweep price
         
         feature_row = {k: item_features_copy.get(k, 0) for k in ALL_FEATURES}
         df_features = pd.DataFrame([feature_row])
         
-        # The predicted log_price from the model IS the model's estimate of fair market price.
-        # Calling predict here as requested by the prompt sequence.
+        # The predicted log_price from the model
         pred_log_price = model.predict(df_features)[0]
         
-        # Demand proxy logic
-        demand = np.exp(-1.0 * (price - category_median) / max(category_std, 1.0))
+        # Compute fair price estimate from model prediction
+        fair_price = np.expm1(pred_log_price)
+        
+        # Compute demand based on deviation from fair price
+        demand = np.exp(-elasticity_k * (price - fair_price) / max(category_std, 1.0))
         
         # Clamp demand to range [0.01, 10.0]
         demand = np.clip(demand, 0.01, 10.0)
