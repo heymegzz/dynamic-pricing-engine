@@ -59,7 +59,12 @@ def optimize_price(features: ItemFeatures):
         category = str(item_dict.get("category_main", ""))
         cat_median, cat_std = get_category_stats(train_df, category)
         
-        feature_row = {k: item_dict.get(k, 0) for k in ALL_FEATURES}
+        feature_row = {}
+        for k in ALL_FEATURES:
+            val = item_dict.get(k, 0)
+            if isinstance(val, str):
+                val = float(train_df[k].mean()) if k in train_df.columns else 0.0
+            feature_row[k] = val
         
         demand_curve = build_demand_curve(
             item_features=feature_row,

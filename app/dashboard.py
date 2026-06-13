@@ -61,8 +61,10 @@ if st.sidebar.button("Optimize Price"):
     
     # Fill remaining features with defaults to match ALL_FEATURES length
     for f in ALL_FEATURES:
-        if f not in item_features:
-            item_features[f] = 0
+        val = item_features.get(f, 0)
+        if isinstance(val, str):
+            val = float(train_df[f].mean()) if f in train_df.columns else 0.0
+        item_features[f] = val
             
     cat_median, cat_std = get_category_stats(train_df, category_main)
     
