@@ -5,7 +5,7 @@ venv/
 data/raw/
 data/processed/
 
-# Trained models (Committing these small artifacts for Streamlit deployment)
+# Trained models - committed for Streamlit Cloud deployment
 # models/
 
 # Jupyter checkpoints
@@ -28,9 +28,8 @@ __pycache__/
 # MLflow
 mlruns/
 
-# Outputs (generated, not source)
+# Outputs - keep metrics.json but ignore large image files
 outputs/*.png
-outputs/*.json
 
 # Kaggle API key
 kaggle.json

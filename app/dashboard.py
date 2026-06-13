@@ -14,7 +14,7 @@ from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from config import PROCESSED_TRAIN, ALL_FEATURES
+from config import ALL_FEATURES
 from src.features import build_inference_row
 from src.elasticity import build_demand_curve
 from src.optimizer import find_optimal_price
@@ -218,11 +218,10 @@ st.markdown("""
 @st.cache_resource
 def load_resources():
     mdl, enc, cat_stats = load_artifacts()
-    train_df = pd.read_parquet(PROCESSED_TRAIN)
-    return mdl, enc, cat_stats, train_df
+    return mdl, enc, cat_stats
 
 try:
-    model, encoders, category_stats, train_df = load_resources()
+    model, encoders, category_stats = load_resources()
 except Exception as e:
     st.error(f"Failed to load models or data: {e}")
     st.stop()
