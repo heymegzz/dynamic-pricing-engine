@@ -106,6 +106,59 @@ def encode_categoricals(df, cat_cols, target_col, fit=True, encoders=None):
     
     return df, encoders
 
+def build_inference_row(raw_input: dict, encoders: dict, category_stats: dict) -> np.ndarray:
+    """
+    Convert a raw user-facing input dict into a (1, n_features) numpy array
+    ready for model.predict(). This is the SINGLE source of truth for feature
+    construction at inference time — both the API and the dashboard must use
+    this function to avoid training/serving skew.
+
+    Args:
+        raw_input (dict): Keys: item_name, category_main, category_sub,
+            category_leaf, brand_name, item_condition_id, shipping,
+            item_description.
+        encoders (dict): Fitted TargetEncoder objects, keyed by column name.
+        category_stats (dict): Category price stats dict from training.
+
+    Returns:
+        np.ndarray: shape (1, len(ALL_FEATURES)), dtype float64.
+    """
+    # 1. Build a single-row DataFrame mirroring the raw CSV schema
+    row = {
+        "name":             str(raw_input.get("item_name", "")),
+        "category_name":    "/".join([
+                                raw_input.get("category_main", "unknown"),
+                                raw_input.get("category_sub",  "unknown"),
+                                raw_input.get("category_leaf", "unknown"),
+                            ]),
+        "brand_name":       str(raw_input.get("brand_name", "unknown")),
+        "item_condition_id": int(raw_input.get("item_condition_id", 1)),
+        "shipping":         int(raw_input.get("shipping", 0)),
+        "item_description": str(raw_input.get("item_description", "")),
+        "price":            0.0,   # dummy — only needed so engineer_features doesn't fail
+    }
+    df = pd.DataFrame([row])
+
+    # 2. Parse category_name → category_main, category_sub, category_leaf
+    df = parse_categories(df)
+
+    # 3. Engineer numeric features (desc_length, name_length, brand_tier,
+    #    category_price_median, category_price_std).  Pass saved category_stats
+    #    so we never refit on a single row.
+    df, _ = engineer_features(df, category_stats=category_stats)
+
+    # 4. Apply saved TargetEncoders for categorical columns
+    df, _ = encode_categoricals(
+        df, config.CAT_FEATURES,
+        target_col="log_price",
+        fit=False,
+        encoders=encoders,
+    )
+
+    # 5. Assemble columns in the exact order defined by ALL_FEATURES
+    feature_row = {k: float(df.iloc[0].get(k, 0.0)) for k in config.ALL_FEATURES}
+    return np.array([[feature_row[k] for k in config.ALL_FEATURES]], dtype=np.float64)
+
 import joblib
 
 def run_pipeline(save=True):
