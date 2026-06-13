@@ -358,7 +358,8 @@ if not optimize_disabled:
         model=model,
         category_median=cat_median,
         category_std=cat_std,
-        elasticity_k=1.0,
+        price_multipliers=price_multipliers,
+        elasticity_k=elasticity_k,
     )
     opt_result = find_optimal_price(demand_curve)
 else:
