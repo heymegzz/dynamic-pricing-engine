@@ -130,7 +130,8 @@ dynamic-pricing-engine/
 │   ├── optimizer.py          # Revenue optimization logic
 │   └── explainer.py          # SHAP attribution
 ├── app/
-│   └── streamlit_app.py      # Dashboard
+│   ├── api.py                # FastAPI endpoints
+│   └── dashboard.py          # Streamlit Dashboard
 ├── models/
 │   └── lgbm_price_model.pkl  # Saved model
 ├── requirements.txt
@@ -156,8 +157,11 @@ unzip mercari-price-suggestion-challenge.zip -d data/raw/
 # Run notebooks in order
 jupyter notebook notebooks/
 
+# Launch API server
+uvicorn app.api:app --reload
+
 # Launch dashboard
-streamlit run app/streamlit_app.py
+streamlit run app/dashboard.py
 ```
 
 ---
