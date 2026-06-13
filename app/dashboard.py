@@ -14,7 +14,7 @@ from plotly.subplots import make_subplots
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import MODEL_FILE, PROCESSED_TRAIN, ALL_FEATURES
-from src.elasticity import load_model, build_demand_curve, get_category_stats
+from src.elasticity import load_model, build_demand_curve
 from src.optimizer import find_optimal_price
 
 st.set_page_config(page_title="Dynamic Pricing Engine", page_icon="📈", layout="wide")
@@ -69,7 +69,7 @@ def load_resources():
     return model, train_df
 
 st.title("Dynamic Pricing Engine")
-st.markdown("Optimize your revenue with machine-learning driven price elasticity modeling. Adjust product parameters below to see real-time shifts in demand and market-clearing prices.")
+st.markdown("Optimize your revenue with machine-learning driven price elasticity modeling. Adjust market baseline and product specs below to instantly see shifts in demand and market-clearing prices.")
 
 try:
     model, train_df = load_resources()
@@ -77,42 +77,36 @@ except Exception as e:
     st.error(f"Failed to load models or data: {e}")
     st.stop()
 
-st.sidebar.markdown("### ⚙️ Item Configurations")
+st.sidebar.markdown("### ⚙️ Engine Configurations")
 
-with st.sidebar.expander("Product Details", expanded=True):
-    category_main = st.text_input("Main Category", value="Women")
-    brand_name = st.text_input("Brand Name", value="Nike")
+with st.sidebar.expander("📊 Market Baseline (The Macro Context)", expanded=True):
+    st.markdown("<small>Define the overall market environment for this item type.</small>", unsafe_allow_html=True)
+    cat_median = st.slider("Market Base Price ($)", min_value=5.0, max_value=200.0, value=25.0, step=1.0)
+    cat_std = st.slider("Market Volatility (Std Dev $)", min_value=1.0, max_value=100.0, value=15.0, step=1.0)
+
+with st.sidebar.expander("🏷️ Item Specifications (The Micro Context)", expanded=True):
+    st.markdown("<small>Define the specific traits of the item you are pricing.</small>", unsafe_allow_html=True)
     item_condition_id = st.slider("Condition (1=New, 5=Poor)", 1, 5, 1)
-
-with st.sidebar.expander("Listing Specs", expanded=True):
     shipping = st.selectbox("Shipping (1=Seller pays, 0=Buyer pays)", [0, 1], index=1)
     desc_length = st.number_input("Description Length (chars)", value=50, step=10)
     name_length = st.number_input("Name Length (chars)", value=20, step=5)
-    brand_tier = st.number_input("Brand Tier (1=Top, 0=Other)", value=1, min_value=0, max_value=1)
+    brand_tier = st.slider("Brand Tier (0=Unknown, 1=Premium)", 0.0, 1.0, 0.5, step=0.1)
 
 # Main optimization logic
 item_features = {
-    "category_main": category_main,
-    "category_sub": "",
-    "category_leaf": "",
-    "brand_name": brand_name,
     "item_condition_id": item_condition_id,
     "shipping": shipping,
     "desc_length": desc_length,
     "name_length": name_length,
-    "brand_tier": brand_tier,
-    "category_price_median": 0.0,
-    "category_price_std": 0.0
+    "brand_tier": brand_tier
 }
 
-# Fill remaining features with defaults to match ALL_FEATURES length
+# Fill remaining features with defaults to match ALL_FEATURES length (fallback for stripped target encodings)
 for f in ALL_FEATURES:
-    val = item_features.get(f, 0)
-    if isinstance(val, str):
+    if f not in item_features:
+        # Use the mean value from the training distribution as the baseline for unprovided categorical floats
         val = float(train_df[f].mean()) if f in train_df.columns else 0.0
-    item_features[f] = val
-        
-cat_median, cat_std = get_category_stats(train_df, category_main)
+        item_features[f] = val
 
 demand_curve = build_demand_curve(
     item_features=item_features,
@@ -124,7 +118,6 @@ demand_curve = build_demand_curve(
 opt_result = find_optimal_price(demand_curve)
 
 # Calculate elasticity array for the curve
-# Use np.gradient for continuous elasticity
 prices_arr = np.array(demand_curve["prices"])
 demands_arr = np.array(demand_curve["demands"])
 dq_dp = np.gradient(demands_arr, prices_arr)
@@ -153,7 +146,7 @@ with col1:
         <div class="metric-title">Optimal Price</div>
         <div class="metric-value">${opt_result['optimal_price']:.2f}</div>
         <div class="metric-delta {'positive' if price_diff >= 0 else 'negative'}">
-            {'+' if price_diff >= 0 else ''}{price_diff_pct:.1f}% vs Category Median
+            {'+' if price_diff >= 0 else ''}{price_diff_pct:.1f}% vs Market Base
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -172,7 +165,7 @@ with col3:
     <div class="metric-card">
         <div class="metric-title">Demand Likelihood</div>
         <div class="metric-value" style="color: #9b59b6;">{opt_result['optimal_demand']:.2f}x</div>
-        <div class="metric-delta neutral">Relative to Median Item</div>
+        <div class="metric-delta neutral">Relative to Base Market</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -285,7 +278,6 @@ with c3:
 
 with c4:
     # Market Context Spider / Bar Chart
-    # Compare this item to global means
     global_desc_mean = train_df['desc_length'].mean() if 'desc_length' in train_df.columns else 50
     global_name_mean = train_df['name_length'].mean() if 'name_length' in train_df.columns else 20
     

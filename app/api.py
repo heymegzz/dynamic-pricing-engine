@@ -12,13 +12,13 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import MODEL_FILE, PROCESSED_TRAIN, ALL_FEATURES
-from src.elasticity import load_model, build_demand_curve, get_category_stats
+from src.elasticity import load_model, build_demand_curve
 from src.optimizer import find_optimal_price
 
 app = FastAPI(
     title="Dynamic Pricing Engine API",
     description="API for optimizing prices using a trained LightGBM model.",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # Load resources on startup
@@ -35,34 +35,31 @@ def load_resources():
     except Exception as e:
         print(f"Error loading resources: {e}")
 
-class ItemFeatures(BaseModel):
-    category_main: str
-    category_sub: str = ""
-    category_leaf: str = ""
-    brand_name: str = ""
+class PricingRequest(BaseModel):
+    market_base_price: float = 25.0
+    market_volatility: float = 15.0
     item_condition_id: int = 1
     shipping: int = 0
     desc_length: int = 50
-    name_length: int = 10
+    name_length: int = 20
     brand_tier: int = 0
-    category_price_median: float = 0.0
-    category_price_std: float = 0.0
 
 @app.post("/optimize")
-def optimize_price(features: ItemFeatures):
+def optimize_price(request: PricingRequest):
     if model is None or train_df is None:
         raise HTTPException(status_code=500, detail="Models or data not loaded.")
         
     try:
-        item_dict = features.dict()
+        item_dict = request.dict()
         
-        category = str(item_dict.get("category_main", ""))
-        cat_median, cat_std = get_category_stats(train_df, category)
+        cat_median = item_dict.pop("market_base_price")
+        cat_std = item_dict.pop("market_volatility")
         
         feature_row = {}
         for k in ALL_FEATURES:
             val = item_dict.get(k, 0)
             if isinstance(val, str):
+                # Fallback for target encoded variables that were dropped
                 val = float(train_df[k].mean()) if k in train_df.columns else 0.0
             feature_row[k] = val
         
