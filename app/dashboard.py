@@ -22,7 +22,6 @@ from src.model import load_artifacts
 
 st.set_page_config(
     page_title="Dynamic Pricing AI",
-    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -307,6 +306,17 @@ with col_sidebar:
         horizontal=True,
     )
 
+    st.markdown("<hr style='border-color:rgba(48,54,61,0.8);margin:1.2rem 0;'>", unsafe_allow_html=True)
+
+    with st.expander(":material/tune: Advanced Optimizer Settings"):
+        st.markdown(
+            "<p style='font-size:0.8rem;color:#8b949e;'>Fine-tune the demand decay parameter and price simulation bounds.</p>",
+            unsafe_allow_html=True,
+        )
+        elasticity_k = st.slider("Demand Elasticity (k)", min_value=0.1, max_value=3.0, value=1.0, step=0.1)
+        sweep_range = st.slider("Price Sweep Multipliers", min_value=0.1, max_value=5.0, value=(0.4, 2.5), step=0.1)
+        price_multipliers = np.linspace(sweep_range[0], sweep_range[1], 100)
+
     # ── Input validation ────────────────────────────────────────────────
     errors = []
     if not item_name.strip():
@@ -320,7 +330,7 @@ with col_sidebar:
         st.error(err)
 
     optimize_disabled = len(errors) > 0
-    run_btn = st.button("⚡ Optimize Price", disabled=optimize_disabled, use_container_width=True)
+    run_btn = st.button(":material/bolt: Optimize Price", disabled=optimize_disabled, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -516,3 +526,23 @@ Note: this is NOT a statistical confidence interval.">
         fig_dem.update_layout(**_chart_layout("Demand Decay Simulation", "Conversion Multiplier"))
         st.plotly_chart(fig_dem, use_container_width=True, config={"displayModeBar": False})
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── SHAP EXPLAINER ──────────────────────────────────────────────────
+    from src.explainer import explain_prediction, plot_waterfall
+    
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    with st.expander(":material/search: Explain this prediction (SHAP)"):
+        if not optimize_disabled:
+            explain_result = explain_prediction(model, X, ALL_FEATURES)
+            fig_shap = plot_waterfall(explain_result, top_n=8, figsize=(8, 4))
+            st.pyplot(fig_shap, transparent=True)
+            st.markdown("""
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:1rem;">
+                <b>How to read this chart:</b> The dashed line is the baseline price for all items. 
+                Red bars push the predicted price higher, while blue bars push it lower. 
+                The sum of all effects gives the final raw predicted price before optimization.
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("Fix input errors to generate an explanation.")
+    st.markdown("</div>", unsafe_allow_html=True)

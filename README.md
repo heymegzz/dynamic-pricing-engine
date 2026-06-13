@@ -28,10 +28,13 @@ All metrics below are computed on the held-out test set (29,634 listings, 20% st
 
 ### Price Prediction Accuracy
 
-| Metric | Baseline (mean price per category) | LightGBM | Improvement |
-|--------|-----------------------------------|----------|-------------|
-| MAE    | $17.80 | $12.32 | −30.8% |
-| RMSE   | $39.20 | $34.31 | −12.5% |
+| Metric | LightGBM | Baseline (mean price) | Improvement |
+|--------|----------|-----------------------|-------------|
+| RMSE (log) | 0.54 ± 0.00 | 0.75 ± 0.00 | −28.1% |
+| MAE (log) | 0.41 ± 0.00 | 0.58 ± 0.00 | −29.5% |
+| RMSE (dollar) | $32.08 ± 3.56 | $40.02 ± 3.37 | −19.8% |
+
+*Metrics reported as mean ± std across 5-fold cross-validation.*
 
 ### Optimizer Behaviour (vs. naive category-mean pricing)
 

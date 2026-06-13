@@ -55,24 +55,30 @@ def engineer_features(df, category_stats=None):
     
     # Brand tier
     df['brand_name'] = df['brand_name'].fillna('unknown')
-    brand_counts = df['brand_name'].value_counts()
-    top_20_percent_count = max(1, int(len(brand_counts) * 0.2))
-    top_brands = set(brand_counts.head(top_20_percent_count).index)
-    df['brand_tier'] = df['brand_name'].isin(top_brands).astype(int)
     
-    # Category price stats
+    # Category price stats & Brand Tier Logic
     if category_stats is None:
         median_series = df.groupby('category_main')['price'].median()
         std_series = df.groupby('category_main')['price'].std().fillna(0)
         global_median = df['price'].median()
         global_std = df['price'].std()
         
+        # Calculate top brands on training data only
+        brand_counts = df['brand_name'].value_counts()
+        top_20_percent_count = max(1, int(len(brand_counts) * 0.2))
+        top_brands = set(brand_counts.head(top_20_percent_count).index)
+        
         category_stats = {
             "median": median_series.to_dict(),
             "std": std_series.to_dict(),
             "global_median": global_median,
-            "global_std": global_std
+            "global_std": global_std,
+            "top_brands": top_brands
         }
+    else:
+        top_brands = category_stats["top_brands"]
+        
+    df['brand_tier'] = df['brand_name'].isin(top_brands).astype(int)
     
     df['category_price_median'] = df['category_main'].map(category_stats["median"]).fillna(category_stats["global_median"])
     df['category_price_std'] = df['category_main'].map(category_stats["std"]).fillna(category_stats["global_std"])
@@ -181,10 +187,10 @@ def run_pipeline(save=True):
     test_df, _ = engineer_features(test_df, category_stats=category_stats)
     
     print("Encoding categoricals for train...")
-    train_df, encoders = encode_categoricals(train_df, config.CAT_FEATURES, config.TARGET, fit=True)
+    train_df, encoders = encode_categoricals(train_df, config.CAT_FEATURES, config.LOG_TARGET, fit=True)
     
     print("Encoding categoricals for test...")
-    test_df, _ = encode_categoricals(test_df, config.CAT_FEATURES, config.TARGET, fit=False, encoders=encoders)
+    test_df, _ = encode_categoricals(test_df, config.CAT_FEATURES, config.LOG_TARGET, fit=False, encoders=encoders)
     
     if save:
         config.DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
