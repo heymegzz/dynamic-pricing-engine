@@ -5,8 +5,8 @@ venv/
 data/raw/
 data/processed/
 
-# Trained models
-models/
+# Trained models (Committing these small artifacts for Streamlit deployment)
+# models/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
